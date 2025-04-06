@@ -81,9 +81,9 @@ export default function BioSite() {
     if (chatLog.length > 0) {
       const restored = chatLog.map((log) => {
         const isAdminLog = log.userName === "Abdallah";
-        const userLine = isAdminLog
-          ? `<span class='text-yellow-400'>🫅 Abdallah</span>: ${log.user} (${log.time}) <span class='text-blue-400'>✓</span> <span class='text-blue-400'>✓</span>`
-          : `👤 You: ${log.user} (${log.time}) <span class='text-blue-400'>✓</span> <span class='text-blue-400'>✓</span>`;
+        const userLine = log.userName === userName
+          ? `👤 You: ${log.user} (${log.time}) <span class='text-blue-400'>✓</span>${log.seen ? " <span class='text-blue-400'>✓</span>" : ""}`
+          : `<span class='text-yellow-400'>🫅 Abdallah</span>: ${log.user} (${log.time}) <span class='text-blue-400'>✓</span> <span class='text-blue-400'>✓</span>`;
         const replyLines = (log.replies || []).map(reply => reply);
         return [userLine, ...replyLines];
       }).flat();
@@ -110,7 +110,7 @@ export default function BioSite() {
         const time = new Date().toLocaleTimeString();
         const label = `👤 You`;
         let message = `${label}: ${trimmed} (${time})`;
-        const updatedChat = [...chatLog, { user: trimmed, userName, time, replies: [] }];
+        const updatedChat = [...chatLog, { user: trimmed, userName, time, replies: [], seen: false }];
         setChatLog(updatedChat);
         localStorage.setItem(`chatLog_${userName}`, JSON.stringify(updatedChat));
         setStaticOutput((prev) => [...prev, message]);
@@ -123,7 +123,7 @@ export default function BioSite() {
           console.log("📬 EmailJS response:", response);
 
           if (response.status === 200) {
-            const successMessage = `${label}: ${trimmed} (${time}) <span class='text-blue-400'>✓</span> <span class='text-blue-400'>✓</span>`;
+            const successMessage = `${label}: ${trimmed} (${time}) <span class='text-blue-400'>✓</span>`;
             setStaticOutput((prev) => [...prev.slice(0, -1), successMessage]);
           } else {
             setStaticOutput((prev) => [...prev, `⚠️ Email service returned: ${response.text}`]);
