@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from "react";
-import { db } from "./firebaseConfig";
+import { db } from "./firebase";
 import { collection, addDoc, onSnapshot, query, orderBy } from "firebase/firestore";
 import emailjs from "emailjs-com";
 import { motion } from "framer-motion";
