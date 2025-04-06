@@ -133,35 +133,33 @@ export default function BioSite() {
     const [baseCmd, ...args] = trimmed.split(" ");
 
     if (chatMode && trimmed !== "exit") {
+      const time = new Date().toLocaleTimeString();
+      const label = isAdmin ? `<span class='text-yellow-400'>🫅 Abdallah</span>` : `👤 You`;
+      let message = `${label}: ${trimmed} (${time})`;
+      const newEntry = { user: trimmed, userName, time, replies: [], seen: false };
+      setChatLog(prev => [...prev, newEntry]);
+      await addDoc(collection(db, "messages"), newEntry);
+      setStaticOutput(prev => [...prev, message]);
+
       if (!isAdmin) {
-        const time = new Date().toLocaleTimeString();
-        const label = `👤 You`;
-        let message = `${label}: ${trimmed} (${time})`;
-        const updatedChat = [...chatLog, { user: trimmed, userName, time, replies: [], seen: false }];
-        setChatLog(updatedChat);
-        await addDoc(collection(db, "messages"), updatedChat[updatedChat.length - 1]);
-        setStaticOutput((prev) => [...prev, message]);
         try {
           const response = await emailjs.send("service_2fdtfyg", "template_btw21b8", {
             user_name: userName,
             message: trimmed
           }, "vhPVKbLsc89CisiWl");
 
-          console.log("📬 EmailJS response:", response);
-
           if (response.status === 200) {
             const successMessage = `${label}: ${trimmed} (${time}) <span class='text-blue-400'>✓</span>`;
-            setStaticOutput((prev) => [...prev.slice(0, -1), successMessage]);
+            setStaticOutput(prev => [...prev.slice(0, -1), successMessage]);
           } else {
-            setStaticOutput((prev) => [...prev, `⚠️ Email service returned: ${response.text}`]);
+            setStaticOutput(prev => [...prev, `⚠️ Email service returned: ${response.text}`]);
           }
         } catch (error) {
           console.error("❌ Email failed:", error);
-          setStaticOutput((prev) => [...prev, `❌ Email failed: ${error.text || error.message}`]);
+          setStaticOutput(prev => [...prev, `❌ Email failed: ${error.text || error.message}`]);
         }
-      } else {
-        setStaticOutput((prev) => [...prev, "❌ Admins must reply using the panel."]);
       }
+
       setCommand("");
       return;
     }
