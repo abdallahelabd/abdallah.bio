@@ -53,7 +53,7 @@ const AnimatedLine = ({ text, onComplete }) => {
   return isHtml ? (
     <pre dangerouslySetInnerHTML={{ __html: text }} />
   ) : (
-    <pre>{displayedText}<span className="animate-pulse">█</span></pre>
+    <pre className="whitespace-pre-wrap break-words">{displayedText}<span className="animate-pulse">█</span></pre>
   );
 };
 
@@ -64,11 +64,17 @@ export default function BioSite() {
   const [queuedLines, setQueuedLines] = useState([]);
   const [chatMode, setChatMode] = useState(false);
   const [chatLog, setChatLog] = useState(() => {
-    const profile = localStorage.getItem("userName") || "Abdallah";
+    const profile = localStorage.getItem("userName") || "User";
     const stored = localStorage.getItem(`chatLog_${profile}`);
     return stored ? JSON.parse(stored) : [];
   });
-  const [userName, setUserName] = useState(() => localStorage.getItem("userName") || "Abdallah");
+  const [userName, setUserName] = useState(() => {
+  const stored = localStorage.getItem("userName");
+  if (stored) return stored;
+  const generated = "User" + Math.floor(Math.random() * 1000);
+  localStorage.setItem("userName", generated);
+  return generated;
+});
   const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem("isAdmin") === "true");
   const inputRef = useRef(null);
   const outputRef = useRef(null);
@@ -208,11 +214,11 @@ export default function BioSite() {
 
   return (
     <main className="min-h-screen bg-black text-green-400 px-4 sm:px-6 py-16 font-mono relative overflow-hidden">
-      <section className="max-w-6xl mx-auto text-lg sm:text-xl md:text-2xl relative z-10">
+      <section className="max-w-6xl mx-auto text-base sm:text-lg md:text-xl relative z-10 px-2">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1 }}>
           <div className="space-y-3">
             {staticOutput.map((line, idx) => (
-              <pre key={`static-${idx}`} dangerouslySetInnerHTML={{ __html: line }} />
+              <pre key={`static-${idx}`} className="whitespace-pre-wrap break-words" dangerouslySetInnerHTML={{ __html: line }} />
             ))}
             {animatedOutput.map((line, idx) => (
               <AnimatedLine
@@ -245,7 +251,7 @@ export default function BioSite() {
         </motion.div>
 
         {isAdmin && (
-          <div className="fixed bottom-4 right-4 sm:top-4 sm:right-4 bg-green-900 text-green-200 p-4 rounded-lg shadow-lg max-w-md z-50">
+          <div className="fixed bottom-0 sm:top-4 sm:right-4 left-0 sm:left-auto bg-green-900 text-green-200 p-4 sm:rounded-lg shadow-lg w-full sm:w-[22rem] max-h-[60vh] overflow-y-auto z-50">
             <h2 className="font-bold text-lg mb-2">Admin Panel</h2>
             <p className="mb-3 text-sm">Type <code>logout</code> to exit admin mode.</p>
             <textarea
