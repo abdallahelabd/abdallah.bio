@@ -292,14 +292,16 @@ export default function BioSite() {
 
                   const time = new Date().toLocaleTimeString();
                   const newEntry = {
-                    user: adminMessage,
-                    userName: "Abdallah",
-                    time,
-                    replies: []
-                  };
+                        user: adminMessage,
+                        userName: "Abdallah",
+                        time,
+                        replies: [],
+                        seen: false,
+                        timestamp: new Date().toISOString()
+                      };
+
 
                   const updatedLog = [...chatLog, newEntry];
-                  setChatLog(updatedLog);
                   await addDoc(collection(db, "messages"), newEntry);
 
                   const displayMsg = `<span class='text-yellow-400'>🫅 Abdallah</span>: ${adminMessage} (${time}) <span class='text-blue-400'>✓</span> <span class='text-blue-400'>✓</span>`;
