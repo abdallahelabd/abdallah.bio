@@ -1,19 +1,7 @@
-// BioSiteWithFirebase.js
+
 import React, { useState, useEffect, useRef } from "react";
 import emailjs from "emailjs-com";
 import { motion } from "framer-motion";
-import { db } from "./firebaseConfig";
-import {
-  collection,
-  query,
-  orderBy,
-  onSnapshot,
-  addDoc,
-  updateDoc,
-  doc,
-  deleteDoc,
-  getDocs
-} from "firebase/firestore";
 
 const pinnedCommands = ["hello", "experience", "skills", "chat"];
 
@@ -76,50 +64,52 @@ export default function BioSite() {
   const [animatedOutput, setAnimatedOutput] = useState([]);
   const [queuedLines, setQueuedLines] = useState([]);
   const [chatMode, setChatMode] = useState(false);
-  const [chatLog, setChatLog] = useState([]);
-  const [userName, setUserName] = useState(() => {
-    const stored = localStorage.getItem("userName");
-    if (stored) return stored;
-    const generated = "User" + Math.floor(Math.random() * 1000);
-    localStorage.setItem("userName", generated);
-    return generated;
+  const [chatLog, setChatLog] = useState(() => {
+    const profile = localStorage.getItem("userName") || "User";
+    const stored = localStorage.getItem(localStorage.getItem("isAdmin") === "true" ? "chatLog_global" : `chatLog_${profile}`);
+    return stored ? JSON.parse(stored) : [];
   });
+  const [userName, setUserName] = useState(() => {
+  const stored = localStorage.getItem("userName");
+  if (stored) return stored;
+  const generated = "User" + Math.floor(Math.random() * 1000);
+  localStorage.setItem("userName", generated);
+  return generated;
+});
   const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem("isAdmin") === "true");
   const inputRef = useRef(null);
   const outputRef = useRef(null);
 
   useEffect(() => {
-    const q = query(collection(db, "chatMessages"), orderBy("timestamp", "asc"));
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const messages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setChatLog(messages);
+    outputRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [staticOutput, animatedOutput]);
 
-      // Mark unseen messages as seen (admin only)
+  useEffect(() => {
+    if (chatLog.length > 0) {
+      let updated = [...chatLog];
       if (isAdmin) {
-        for (const msg of messages) {
-          if (!msg.seen && msg.userName !== "Abdallah") {
-            await updateDoc(doc(db, "chatMessages", msg.id), { seen: true });
+        updated = chatLog.map(log => {
+          if (!log.seen && log.userName !== "Abdallah") {
+            return { ...log, seen: true };
           }
-        }
+          return log;
+        });
+        setChatLog(updated);
+        localStorage.setItem(isAdmin ? "chatLog_global" : `chatLog_${userName}`, JSON.stringify(updated));
       }
-
-      const restored = messages.map((log) => {
+      const restored = updated.map((log) => {
         const isAdminLog = log.userName === "Abdallah";
-        const userLine = isAdminLog
+        const userLine = log.userName === "Abdallah"
           ? `<span class='text-yellow-400'>🫅 Abdallah</span>: ${log.user} (${log.time}) <span class='text-blue-400'>✓</span> <span class='text-blue-400 transition-opacity duration-300 animate-pingOnce'>✓</span>`
           : log.userName === userName && !isAdmin
             ? `👤 You: ${log.user} (${log.time}) <span class='text-blue-400'>✓</span>${log.seen ? " <span class='text-blue-400 transition-opacity duration-300 animate-pingOnce'>✓</span>" : ""}`
-            : `👤 ${log.userName}: ${log.user} (${log.time})`;
-
+            : `👤 You: ${log.user} (${log.time}) <span class='text-blue-400'>✓</span>${log.seen ? " <span class='text-blue-400'>✓</span>" : ""}`;
         const replyLines = (log.replies || []).map(reply => reply);
         return [userLine, ...replyLines];
       }).flat();
-
-      setStaticOutput(["Abdallah Elabd 💚", "Twitter: @abdallahelabd05", ...restored]);
-    });
-
-    return () => unsubscribe();
-  }, [isAdmin, userName]);
+      setStaticOutput((prev) => [...prev, ...restored]);
+    }
+  }, []);
 
   useEffect(() => {
     if (queuedLines.length > 0 && animatedOutput.length === 0) {
@@ -138,21 +128,35 @@ export default function BioSite() {
     if (chatMode && trimmed !== "exit") {
       if (!isAdmin) {
         const time = new Date().toLocaleTimeString();
-        await addDoc(collection(db, "chatMessages"), {
-          user: trimmed,
-          userName,
-          time,
-          replies: [],
-          seen: false,
-          timestamp: new Date()
-        });
-        setCommand("");
-        return;
+        const label = `👤 You`;
+        let message = `${label}: ${trimmed} (${time})`;
+        const updatedChat = [...chatLog, { user: trimmed, userName, time, replies: [], seen: false }];
+        setChatLog(updatedChat);
+        localStorage.setItem(isAdmin ? "chatLog_global" : `chatLog_${userName}`, JSON.stringify(updatedChat));
+        setStaticOutput((prev) => [...prev, message]);
+        try {
+          const response = await emailjs.send("service_2fdtfyg", "template_btw21b8", {
+            user_name: userName,
+            message: trimmed
+          }, "vhPVKbLsc89CisiWl");
+
+          console.log("📬 EmailJS response:", response);
+
+          if (response.status === 200) {
+            const successMessage = `${label}: ${trimmed} (${time}) <span class='text-blue-400'>✓</span>`;
+            setStaticOutput((prev) => [...prev.slice(0, -1), successMessage]);
+          } else {
+            setStaticOutput((prev) => [...prev, `⚠️ Email service returned: ${response.text}`]);
+          }
+        } catch (error) {
+          console.error("❌ Email failed:", error);
+          setStaticOutput((prev) => [...prev, `❌ Email failed: ${error.text || error.message}`]);
+        }
       } else {
         setStaticOutput((prev) => [...prev, "❌ Admins must reply using the panel."]);
-        setCommand("");
-        return;
       }
+      setCommand("");
+      return;
     }
 
     if (chatMode && trimmed === "exit") {
@@ -165,15 +169,9 @@ export default function BioSite() {
     let result = [];
     switch (baseCmd) {
       case "clear":
-        if (isAdmin) {
-          const querySnapshot = await getDocs(collection(db, "chatMessages"));
-          querySnapshot.forEach(async (docSnap) => {
-            await deleteDoc(doc(db, "chatMessages", docSnap.id));
-          });
-          setStaticOutput((prev) => [...prev, `$ ${command}`, "🧹 Chat history cleared from Firestore."]);
-        } else {
-          setStaticOutput((prev) => [...prev, `$ ${command}`, "❌ Only admins can clear chat."]);
-        }
+        setChatLog([]);
+        localStorage.removeItem(isAdmin ? "chatLog_global" : `chatLog_${userName}`);
+        setStaticOutput((prev) => [...prev, `$ ${command}`, "🧹 Chat history cleared."]);
         setCommand("");
         return;
       case "admin":
@@ -263,6 +261,70 @@ export default function BioSite() {
 
           <PinnedCommands setCommand={setCommand} inputRef={inputRef} />
         </motion.div>
+
+        {isAdmin && (
+          <>
+            <button
+  onClick={() => setShowAdmin((prev) => !prev)}
+  className="fixed bottom-4 right-4 z-50 block sm:hidden bg-green-800 text-white px-4 py-2 rounded shadow-md"
+>
+  {showAdmin ? "Hide Panel" : "Admin Panel"}
+</button>
+
+            {showAdmin && (
+              <div className="fixed bottom-0 sm:top-4 sm:right-4 left-0 sm:left-auto bg-green-900 text-green-200 p-4 sm:rounded-lg shadow-lg w-full sm:w-[22rem] max-h-[60vh] overflow-y-auto z-50">
+            <h2 className="font-bold text-lg mb-2">Admin Panel</h2>
+            <p className="mb-3 text-sm">Type <code>logout</code> to exit admin mode.</p>
+            <textarea
+              placeholder="Type your message as admin..."
+              className="w-full bg-black border border-green-600 text-green-200 p-2 rounded mb-2 resize-none text-sm sm:text-base"
+              rows={3}
+              onKeyDown={async (e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  const adminMessage = e.target.value.trim();
+                  if (!adminMessage) return;
+
+                  const time = new Date().toLocaleTimeString();
+                  const newEntry = {
+                    user: adminMessage,
+                    userName: "Abdallah",
+                    time,
+                    replies: []
+                  };
+
+                  const updatedLog = [...chatLog, newEntry];
+                  setChatLog(updatedLog);
+                  localStorage.setItem("chatLog_global", JSON.stringify(updatedLog));
+
+                  const displayMsg = `<span class='text-yellow-400'>🫅 Abdallah</span>: ${adminMessage} (${time}) <span class='text-blue-400'>✓</span> <span class='text-blue-400'>✓</span>`;
+                  setStaticOutput((prev) => [...prev, displayMsg]);
+                  e.target.value = "";
+
+                  try {
+                    await emailjs.send("service_2fdtfyg", "template_btw21b8", {
+                      user_name: "Abdallah",
+                      message: adminMessage,
+                      to_email: "abdallahelabd05@gmail.com"
+                    }, "vhPVKbLsc89CisiWl");
+                  } catch (error) {
+                    console.error("Email failed:", error);
+                  }
+                }
+              }}
+            />
+            <h3 className="text-green-300 text-sm mb-2 font-bold">User Messages</h3>
+            <ul className="space-y-1 text-sm">
+              {chatLog.map((log, index) => (
+                <li key={index} className="text-green-100 border-b border-green-700 pb-1">
+                  👤 {log.userName}: {log.user} <span className="text-xs text-green-400">({log.time})</span>
+                </li>
+              ))}
+            </ul>
+              </div>
+            )}
+          </>
+        )}
       </section>
     </main>
   );
