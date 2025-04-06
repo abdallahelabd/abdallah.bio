@@ -207,8 +207,8 @@ export default function BioSite() {
   };
 
   return (
-    <main className="min-h-screen bg-black text-green-400 px-6 py-16 font-mono relative overflow-hidden">
-      <section className="max-w-6xl mx-auto text-2xl relative z-10">
+    <main className="min-h-screen bg-black text-green-400 px-4 sm:px-6 py-16 font-mono relative overflow-hidden">
+      <section className="max-w-6xl mx-auto text-lg sm:text-xl md:text-2xl relative z-10">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1 }}>
           <div className="space-y-3">
             {staticOutput.map((line, idx) => (
@@ -227,7 +227,7 @@ export default function BioSite() {
             <div ref={outputRef} />
           </div>
 
-          <div className="mt-6 flex items-center gap-2">
+          <div className="mt-6 flex flex-col sm:flex-row items-start sm:items-center gap-2">
             <span className="text-green-500">$</span>
             <input
               ref={inputRef}
@@ -245,12 +245,12 @@ export default function BioSite() {
         </motion.div>
 
         {isAdmin && (
-          <div className="absolute top-4 right-4 bg-green-900 text-green-200 p-4 rounded-lg shadow-lg max-w-md z-50">
+          <div className="fixed bottom-4 right-4 sm:top-4 sm:right-4 bg-green-900 text-green-200 p-4 rounded-lg shadow-lg max-w-md z-50">
             <h2 className="font-bold text-lg mb-2">Admin Panel</h2>
             <p className="mb-3 text-sm">Type <code>logout</code> to exit admin mode.</p>
             <textarea
               placeholder="Type your message as admin..."
-              className="w-full bg-black border border-green-600 text-green-200 p-2 rounded mb-2 resize-none"
+              className="w-full bg-black border border-green-600 text-green-200 p-2 rounded mb-2 resize-none text-sm sm:text-base"
               rows={3}
               onKeyDown={async (e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
