@@ -81,7 +81,7 @@ export default function BioSite() {
     if (chatLog.length > 0) {
       const restored = chatLog.map((log) => {
         const isAdminLog = log.userName === "Abdallah";
-        const userLine = log.userName === userName
+        const userLine = log.userName === userName && !isAdmin
           ? `👤 You: ${log.user} (${log.time}) <span class='text-blue-400'>✓</span>${log.seen ? " <span class='text-blue-400'>✓</span>" : ""}`
           : `<span class='text-yellow-400'>🫅 Abdallah</span>: ${log.user} (${log.time}) <span class='text-blue-400'>✓</span> <span class='text-blue-400'>✓</span>`;
         const replyLines = (log.replies || []).map(reply => reply);
