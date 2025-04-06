@@ -58,6 +58,7 @@ const AnimatedLine = ({ text, onComplete }) => {
 };
 
 export default function BioSite() {
+  const [showAdmin, setShowAdmin] = useState(() => window.innerWidth >= 640);
   const [command, setCommand] = useState("");
   const [staticOutput, setStaticOutput] = useState(["Abdallah Elabd 💚", "Twitter: @abdallahelabd05"]);
   const [animatedOutput, setAnimatedOutput] = useState([]);
@@ -85,13 +86,24 @@ export default function BioSite() {
 
   useEffect(() => {
     if (chatLog.length > 0) {
-      const restored = chatLog.map((log) => {
+      let updated = [...chatLog];
+      if (isAdmin) {
+        updated = chatLog.map(log => {
+          if (!log.seen && log.userName !== "Abdallah") {
+            return { ...log, seen: true };
+          }
+          return log;
+        });
+        setChatLog(updated);
+        localStorage.setItem(`chatLog_${userName}`, JSON.stringify(updated));
+      }
+      const restored = updated.map((log) => {
         const isAdminLog = log.userName === "Abdallah";
         const userLine = log.userName === "Abdallah"
-          ? `<span class='text-yellow-400'>🫅 Abdallah</span>: ${log.user} (${log.time}) <span class='text-blue-400'>✓</span> <span class='text-blue-400'>✓</span>`
+          ? `<span class='text-yellow-400'>🫅 Abdallah</span>: ${log.user} (${log.time}) <span class='text-blue-400'>✓</span> <span class='text-blue-400 transition-opacity duration-300 animate-pingOnce'>✓</span>`
           : log.userName === userName && !isAdmin
-            ? `👤 You: ${log.user} (${log.time}) <span class='text-blue-400'>✓</span>${log.seen ? " <span class='text-blue-400'>✓</span>" : ""}`
-            : `👤 ${log.userName}: ${log.user} (${log.time}) <span class='text-blue-400'>✓</span>${log.seen ? " <span class='text-blue-400'>✓</span>" : ""}`;
+            ? `👤 You: ${log.user} (${log.time}) <span class='text-blue-400'>✓</span>${log.seen ? " <span class='text-blue-400 transition-opacity duration-300 animate-pingOnce'>✓</span>" : ""}`
+            : `👤 You: ${log.user} (${log.time}) <span class='text-blue-400'>✓</span>${log.seen ? " <span class='text-blue-400'>✓</span>" : ""}`;
         const replyLines = (log.replies || []).map(reply => reply);
         return [userLine, ...replyLines];
       }).flat();
@@ -233,7 +245,7 @@ export default function BioSite() {
             <div ref={outputRef} />
           </div>
 
-          <div className="mt-6 flex flex-col sm:flex-row items-start sm:items-center gap-2">
+          <div className="mt-6 flex items-center gap-2">
             <span className="text-green-500">$</span>
             <input
               ref={inputRef}
@@ -251,7 +263,16 @@ export default function BioSite() {
         </motion.div>
 
         {isAdmin && (
-          <div className="fixed bottom-0 sm:top-4 sm:right-4 left-0 sm:left-auto bg-green-900 text-green-200 p-4 sm:rounded-lg shadow-lg w-full sm:w-[22rem] max-h-[60vh] overflow-y-auto z-50">
+          <>
+            <button
+  onClick={() => setShowAdmin((prev) => !prev)}
+  className="fixed bottom-4 right-4 z-50 block sm:hidden bg-green-800 text-white px-4 py-2 rounded shadow-md"
+>
+  {showAdmin ? "Hide Panel" : "Admin Panel"}
+</button>
+
+            {showAdmin && (
+              <div className="fixed bottom-0 sm:top-4 sm:right-4 left-0 sm:left-auto bg-green-900 text-green-200 p-4 sm:rounded-lg shadow-lg w-full sm:w-[22rem] max-h-[60vh] overflow-y-auto z-50">
             <h2 className="font-bold text-lg mb-2">Admin Panel</h2>
             <p className="mb-3 text-sm">Type <code>logout</code> to exit admin mode.</p>
             <textarea
@@ -300,7 +321,9 @@ export default function BioSite() {
                 </li>
               ))}
             </ul>
-          </div>
+              </div>
+            )}
+          </>
         )}
       </section>
     </main>
