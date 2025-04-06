@@ -1,5 +1,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
+import { db } from "./firebaseConfig";
+import { collection, addDoc, onSnapshot, query, orderBy } from "firebase/firestore";
 import emailjs from "emailjs-com";
 import { motion } from "framer-motion";
 
@@ -64,11 +66,16 @@ export default function BioSite() {
   const [animatedOutput, setAnimatedOutput] = useState([]);
   const [queuedLines, setQueuedLines] = useState([]);
   const [chatMode, setChatMode] = useState(false);
-  const [chatLog, setChatLog] = useState(() => {
-    const profile = localStorage.getItem("userName") || "User";
-    const stored = localStorage.getItem(localStorage.getItem("isAdmin") === "true" ? "chatLog_global" : `chatLog_${profile}`);
-    return stored ? JSON.parse(stored) : [];
-  });
+  const [chatLog, setChatLog] = useState([]);
+
+  useEffect(() => {
+    const q = query(collection(db, "messages"), orderBy("time"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const messages = snapshot.docs.map(doc => doc.data());
+      setChatLog(messages);
+    });
+    return () => unsubscribe();
+  }, []);
   const [userName, setUserName] = useState(() => {
   const stored = localStorage.getItem("userName");
   if (stored) return stored;
@@ -132,7 +139,7 @@ export default function BioSite() {
         let message = `${label}: ${trimmed} (${time})`;
         const updatedChat = [...chatLog, { user: trimmed, userName, time, replies: [], seen: false }];
         setChatLog(updatedChat);
-        localStorage.setItem(isAdmin ? "chatLog_global" : `chatLog_${userName}`, JSON.stringify(updatedChat));
+        await addDoc(collection(db, "messages"), updatedChat[updatedChat.length - 1]);
         setStaticOutput((prev) => [...prev, message]);
         try {
           const response = await emailjs.send("service_2fdtfyg", "template_btw21b8", {
@@ -170,7 +177,7 @@ export default function BioSite() {
     switch (baseCmd) {
       case "clear":
         setChatLog([]);
-        localStorage.removeItem(isAdmin ? "chatLog_global" : `chatLog_${userName}`);
+        // Optionally implement message deletion from Firebase here
         setStaticOutput((prev) => [...prev, `$ ${command}`, "🧹 Chat history cleared."]);
         setCommand("");
         return;
@@ -295,7 +302,7 @@ export default function BioSite() {
 
                   const updatedLog = [...chatLog, newEntry];
                   setChatLog(updatedLog);
-                  localStorage.setItem("chatLog_global", JSON.stringify(updatedLog));
+                  await addDoc(collection(db, "messages"), newEntry);
 
                   const displayMsg = `<span class='text-yellow-400'>🫅 Abdallah</span>: ${adminMessage} (${time}) <span class='text-blue-400'>✓</span> <span class='text-blue-400'>✓</span>`;
                   setStaticOutput((prev) => [...prev, displayMsg]);
